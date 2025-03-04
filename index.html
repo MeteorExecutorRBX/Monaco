@@ -202,5 +202,11 @@
             return editors[activeTab].getValue();
         }
         return "";
+    };
+    
+    function SetText(content) {
+    if (activeTab && editors[activeTab]) {
+        editors[activeTab].setValue(content);
     }
+}
 </script>
