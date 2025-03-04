@@ -166,10 +166,8 @@
             document.getElementById(tabId).remove();
             delete editors[tabId];
 
-            // Supprimer l'onglet de la liste
             tabs = tabs.filter(id => id !== tabId);
 
-            // Trouver le plus grand ID restant
             if (tabs.length > 0) {
                 let highestTabId = tabs.reduce((max, id) => {
                     let num = parseInt(id.replace("tab-", ""), 10);
