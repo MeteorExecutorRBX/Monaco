@@ -91,6 +91,81 @@
 
         addTabButton.onclick = addTab;
 
+        function loadTabsFromStorage() {
+            let savedTabs = JSON.parse(localStorage.getItem("meteorTabs"));
+            if (savedTabs) {
+                savedTabs.forEach(tabData => {
+                    let tabId = tabData.id;
+                    let tabName = tabData.name;
+                    let content = tabData.content;
+
+                    let tab = document.createElement("div");
+                    tab.className = "tab";
+                    tab.setAttribute("data-id", tabId);
+                    tab.onclick = () => switchTab(tabId);
+
+                    let tabLabel = document.createElement("span");
+                    tabLabel.className = "tab-name";
+                    tabLabel.innerText = tabName;
+                    tabLabel.ondblclick = () => enableEditing(tabLabel, tabInput);
+
+                    let tabInput = document.createElement("input");
+                    tabInput.type = "text";
+                    tabInput.value = tabName;
+                    tabInput.onblur = () => disableEditing(tabLabel, tabInput);
+                    tabInput.onkeypress = (e) => {
+                        if (e.key === "Enter") {
+                            disableEditing(tabLabel, tabInput);
+                        }
+                    };
+
+                    let closeButton = document.createElement("span");
+                    closeButton.innerText = "✕";
+                    closeButton.className = "close-btn";
+                    closeButton.onclick = (e) => {
+                        e.stopPropagation();
+                        removeTab(tabId);
+                    };
+
+                    tab.appendChild(tabLabel);
+                    tab.appendChild(tabInput);
+                    tab.appendChild(closeButton);
+                    tabContainer.insertBefore(tab, addTabButton);
+                    tabs.push(tabId);
+
+                    let newEditorDiv = document.createElement("div");
+                    newEditorDiv.id = tabId;
+                    newEditorDiv.style.width = "100%";
+                    newEditorDiv.style.height = "100%";
+                    editorContainer.appendChild(newEditorDiv);
+
+                    require(["vs/editor/editor.main"], function () {
+                        editors[tabId] = monaco.editor.create(newEditorDiv, {
+                            value: content,
+                            language: "lua",
+                            theme: "vs-dark"
+                        });
+                        editors[tabId].onDidChangeModelContent(() => saveTabsToStorage());
+                    });
+                });
+
+                if (savedTabs.length > 0) {
+                    switchTab(savedTabs[0].id);
+                }
+            } else {
+                addTab();
+            }
+        }
+
+        function saveTabsToStorage() {
+            let tabsData = tabs.map(tabId => ({
+                id: tabId,
+                name: document.querySelector(`[data-id='${tabId}'] .tab-name`).innerText,
+                content: editors[tabId].getValue()
+            }));
+            localStorage.setItem("meteorTabs", JSON.stringify(tabsData));
+        }
+
         function addTab() {
             let tabId = "tab-" + (tabs.length + 1);
             let tabName = "New Tab " + (tabs.length + 1);
@@ -137,13 +212,15 @@
 
             require(["vs/editor/editor.main"], function () {
                 editors[tabId] = monaco.editor.create(newEditorDiv, {
-                    value: "--[[\nMeteor Executor\ndiscord.gg/cPAJV4dtUt\n]]",
+                    value: "--[[\n  Meteor Executor\n   discord.gg/cPAJV4dtUt\n]]",
                     language: "lua",
                     theme: "vs-dark"
                 });
+                editors[tabId].onDidChangeModelContent(() => saveTabsToStorage());
             });
 
             switchTab(tabId);
+            saveTabsToStorage();
         }
 
         function switchTab(tabId) {
@@ -177,6 +254,8 @@
                 let nextTab = `tab-${highestTabId}`;
                 switchTab(nextTab);
             }
+
+            saveTabsToStorage();
         }
 
         function enableEditing(label, input) {
@@ -190,23 +269,16 @@
             input.style.display = "none";
             label.style.display = "inline-block";
             label.innerText = input.value.trim() || "New Tab";
+            saveTabsToStorage();
         }
 
-        addTab();
+        function clearTabContent() {
+            if (activeTab && editors[activeTab]) {
+                editors[activeTab].setValue("");
+            }
+        }
+
+        loadTabsFromStorage();
     </script>
 </body>
 </html>
-<script>
-    function GetText() {
-        if (activeTab && editors[activeTab]) {
-            return editors[activeTab].getValue();
-        }
-        return "";
-    };
-    
-    function SetText(content) {
-        if (activeTab && editors[activeTab]) {
-            editors[activeTab].setValue(content);
-        }
-    }
-</script>
