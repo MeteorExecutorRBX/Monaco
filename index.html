@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meteor Monaco Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/loader.js"></script>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #1e1e1e;
+            color: white;
+            font-family: Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        #tab-container {
+            display: flex;
+            background: #252526;
+            padding: 5px;
+            border-bottom: 2px solid #333;
+            align-items: center;
+        }
+        .tab {
+            display: flex;
+            align-items: center;
+            padding: 5px 10px;
+            margin-right: 5px;
+            cursor: pointer;
+            background: #2d2e42;
+            border-radius: 5px 5px 0 0;
+            color: white;
+            position: relative;
+        }
+        .tab.active {
+            background: #40477f;
+        }
+        .tab .tab-name {
+            cursor: pointer;
+        }
+        .tab input {
+            display: none;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 13px;
+            width: 100px;
+            outline: none;
+            text-align: center;
+        }
+        .tab .close-btn {
+            margin-left: 8px;
+            color: #b3b5cb;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .tab .close-btn:hover {
+            color: #d1d4ee;
+        }
+        #add-tab {
+            padding: 5px 10px;
+            background: #333;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            color: white;
+        }
+        #editor-container {
+            width: 100%;
+            height: calc(100vh - 40px);
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div id="tab-container">
+        <div id="add-tab">+</div>
+    </div>
+    <div id="editor-container"></div>
+
+    <script>
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' } });
+
+        let tabs = [];
+        let editors = {};
+        let activeTab = null;
+        let tabContainer = document.getElementById("tab-container");
+        let editorContainer = document.getElementById("editor-container");
+        let addTabButton = document.getElementById("add-tab");
+
+        addTabButton.onclick = addTab;
+
+        function addTab() {
+            let tabId = "tab-" + (tabs.length + 1);
+            let tabName = "New Tab " + (tabs.length + 1);
+
+            let tab = document.createElement("div");
+            tab.className = "tab";
+            tab.setAttribute("data-id", tabId);
+            tab.onclick = () => switchTab(tabId);
+
+            let tabLabel = document.createElement("span");
+            tabLabel.className = "tab-name";
+            tabLabel.innerText = tabName;
+            tabLabel.ondblclick = () => enableEditing(tabLabel, tabInput);
+
+            let tabInput = document.createElement("input");
+            tabInput.type = "text";
+            tabInput.value = tabName;
+            tabInput.onblur = () => disableEditing(tabLabel, tabInput);
+            tabInput.onkeypress = (e) => {
+                if (e.key === "Enter") {
+                    disableEditing(tabLabel, tabInput);
+                }
+            };
+
+            let closeButton = document.createElement("span");
+            closeButton.innerText = "✕";
+            closeButton.className = "close-btn";
+            closeButton.onclick = (e) => {
+                e.stopPropagation();
+                removeTab(tabId);
+            };
+
+            tab.appendChild(tabLabel);
+            tab.appendChild(tabInput);
+            tab.appendChild(closeButton);
+            tabContainer.insertBefore(tab, addTabButton);
+            tabs.push(tabId);
+
+            let newEditorDiv = document.createElement("div");
+            newEditorDiv.id = tabId;
+            newEditorDiv.style.width = "100%";
+            newEditorDiv.style.height = "100%";
+            editorContainer.appendChild(newEditorDiv);
+
+            require(["vs/editor/editor.main"], function () {
+                editors[tabId] = monaco.editor.create(newEditorDiv, {
+                    value: "--[[\nMeteor Executor\ndiscord.gg/cPAJV4dtUt\n]]",
+                    language: "lua",
+                    theme: "vs-dark"
+                });
+            });
+
+            switchTab(tabId);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+            document.querySelector(`[data-id='${tabId}']`).classList.add("active");
+
+            Object.keys(editors).forEach(id => {
+                document.getElementById(id).style.display = id === tabId ? "block" : "none";
+            });
+
+            activeTab = tabId;
+        }
+
+        function removeTab(tabId) {
+            if (tabs.length === 1) {
+                return;
+            }
+
+            document.querySelector(`[data-id='${tabId}']`).remove();
+            document.getElementById(tabId).remove();
+            delete editors[tabId];
+
+            tabs = tabs.filter(id => id !== tabId);
+            if (activeTab === tabId && tabs.length > 0) {
+                switchTab(tabs[0]);
+            }
+        }
+
+        function enableEditing(label, input) {
+            label.style.display = "none";
+            input.style.display = "inline-block";
+            input.focus();
+            input.select();
+        }
+
+        function disableEditing(label, input) {
+            input.style.display = "none";
+            label.style.display = "inline-block";
+            label.innerText = input.value.trim() || "New Tab";
+        }
+
+        addTab();
+    </script>
+</body>
+</html>
